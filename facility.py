@@ -1,23 +1,59 @@
-facility_list = []
-def get_last_id():
-    if facility_list:
-        last_facility = facility_list[-1]
-    else:
-        return 1
-    return last_facility.id + 1
-class Facility:
-    def __init__(self, name, description, location):
+from flask import request
+from flask_restful import Resource
+from http import HTTPStatus
+from models.facility import Facility, facility_list
 
-        self.id = get_last_id()
-        self.name = name
-        self.description = description
-        self.location = location
+class FacilityListResource(Resource):
+    def get(self):
+        data = []
+        for facility in facility_list:
+            if facility.is_publish is True:
+                data.append(facility.data)
+        return {'data': data}, HTTPStatus.OK
 
-    @property
-    def data(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'location': self.location
-        }
+    def post(self):
+        data = request.get_json()
+        facility = Facility(name=data['name'], description=data['description'], location=data['location'])
+
+
+        facility_list.append(facility)
+        return facility.data, HTTPStatus.CREATED
+
+class FacilityResource(Resource):
+    def get(self, facility_id):
+        facility = next((facility for facility in facility_list if facility.id == facility_id and facility.is_publish == True), None)
+
+        if facility is None:
+            return {'message': 'facility not found'}, HTTPStatus.NOT_FOUND
+        return facility.data, HTTPStatus.OK
+
+    def put(self, facility_id):
+        data = request.get_json()
+        facility = next((facility for facility in facility_list if facility.id ==  facility_id), None)
+
+        if facility is None:
+            return {'message': 'facility not found'}, HTTPStatus.NOT_FOUND
+        facility.name = data['name']
+        facility.description = data['description']
+        facility.location = data['location']
+
+        return facility.data, HTTPStatus.OK
+
+class FacilityPublishResource(Resource):
+    def put(self, facility_id):
+        facility = next((facility for facility in facility_list if facility.id == facility_id), None)
+
+        if facility is None:
+            return {'message': 'facility not found'}, HTTPStatus.NOT_FOUND
+        facility.is_publish = True
+        return {}, HTTPStatus.NO_CONTENT
+
+    def delete(self, facility_id):
+        facility = next((facility for facility in facility_list if facility.id == facility_id), None)
+
+        if facility is None:
+            return {'message': 'facility not found'}, HTTPStatus.NOT_FOUND
+        facility.is_publish = False
+        return {}, HTTPStatus.NO_CONTENT
+
+
